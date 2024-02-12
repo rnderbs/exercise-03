@@ -1,0 +1,214 @@
+---
+title: "EDA-challenge, exercise 3"
+author: "Riley N Derby"
+date: "2024-02-05"
+output: html_document
+---
+time to do exercise 3
+
+
+
+first we need to get csv off a url
+```{r}
+library(tidyverse)
+library(dplyr)
+
+f <- "https://raw.githubusercontent.com/difiore/ada-2024-datasets/main/data-wrangling.csv"
+d <- read_csv(f, col_names = TRUE)  # creates a 'tibble'
+head(d)
+```
+
+now lets get the structure
+```{r}
+str(d)
+glimpse(d)
+```
+Create a new variable named BSD (body size dimorphism) which is the ratio of average male to female body mass.
+```{r}
+d$BSD <- d$Body_mass_male_mean/d$Body_mass_female_mean
+```
+
+Create a new variable named sex_ratio, which is the ratio of the number of adult females to adult males in a typical group.
+```{r}
+d$sex_ratio <- d$AdultFemale/d$AdultMales
+```
+
+
+HINT: You will need to calculate the diameter of HR for each species from the size of its home range! For the purposes of this assignment, presume that the home range is a circle and use the formula for the area of a circle: The variable pi (note, without parentheses) will return the value ofas a constant built-in to R, and the function sqrt() can be used to calculate the square root ()
+
+lets calculate diameter
+so d = 2(sqrt(hr/pi))
+```{r}
+diameter <- (2*sqrt((d$HomeRange_km2)/(pi)))
+
+diameter
+
+d$diameter <- diameter
+```
+
+
+
+Create a new variable named DI (for “defensibility index”), which is the ratio of day range length to the diameter of the home range
+```{r}
+d$DI <- d$DayLength_km/d$diameter 
+```
+
+plot the relationship between day range length and time moving for overall
+```{r}
+library(ggplot2)
+names(d)
+
+fig1 <-ggplot(d, aes(x = DayLength_km , y = Move))+
+  geom_point()+
+  geom_point(position = "jitter")+
+  theme_classic()
+
+fig1
+
+```
+
+now log it
+```{r}
+fig1 <-ggplot(d, aes(x = log(DayLength_km) , y = log(Move)))+
+  geom_point()+
+  geom_point(position = "jitter")+
+  theme_classic()
+
+fig1
+```
+
+
+
+
+
+now plot it by families rather than just overall
+```{r}
+fig2 <-ggplot(d, aes(x = DayLength_km , y = Move, color = Family))+
+  geom_point(na.rm = T)+
+  theme_classic()
+
+fig2
+
+```
+
+
+log family one too
+```{r}
+fig2 <-ggplot(d, aes(x = log(DayLength_km) , y = log(Move), color = Family))+
+  geom_point()+
+  theme_classic()
+
+fig2
+```
+
+
+
+
+add regression lines for families
+```{r}
+ggplot(data = d, aes(x = log(DayLength_km), y = log(Move), color = Family)) +
+  geom_point(na.rm = TRUE) +
+  theme_classic() + 
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+Plot the relationship between day range length and time group size, overall and by family. Do species that live in larger groups travel farther overall? How about within any particular primate family? Should you transform either of these variables?
+
+plot day range and group size
+```{r}
+ggplot(data = d, aes(x = DayLength_km, y = MeanGroupSize)) + 
+  geom_point()+ 
+  theme_classic()
+```
+
+log it 
+```{r}
+ggplot(data = d, aes(x = log(DayLength_km), y = log(MeanGroupSize))) + 
+  geom_point()+ 
+  theme_classic()
+```
+
+
+color by family
+
+```{r}
+ggplot(data = d, aes(x = log(DayLength_km), y = log(MeanGroupSize), color = Family)) + 
+  geom_point()+ 
+  theme_classic()+
+  geom_smooth(method = 'lm', se = F)
+```
+
+Plot the relationship between body size dimorphism and canine size dimorphism overall and by family. Do taxa with greater size dimorphism also show greater canine dimorphism?
+
+
+BSD VS Canine
+```{r}
+ggplot(data = d, aes(x = (BSD), y = (Canine_Dimorphism))) + 
+  geom_point()+ 
+  theme_classic()
+```
+
+log it
+```{r}
+ggplot(data = d, aes(x = log(BSD), y = log(Canine_Dimorphism))) + 
+  geom_point()+ 
+  theme_classic()
+```
+
+color by family
+```{r}
+ggplot(data = d, aes(x = log(BSD), y = log(Canine_Dimorphism), color = Family)) + 
+  geom_point()+ 
+  theme_classic()+
+  geom_smooth(method = 'lm', se = F)
+```
+
+Create a new variable named diet_strategy that is “frugivore” if fruits make up >50% of the diet, “folivore” if leaves make up >50% of the diet, and “omnnivore” if neither of these is true. Then, do boxplots of group size for species with different dietary strategies. Do frugivores live in larger groups than folivores?
+
+
+create new variable
+```{r}
+library(dplyr)
+
+
+diet_strategy <- d %>% 
+  select(Fruit, Leaves) %>%
+  mutate(diet_strategy = case_when(
+    Fruit >= 50 ~ "Frugivore",
+    Leaves >= 50 ~ "Folivore",
+    .default = "Omnivore"
+  ))
+diet_strategy
+
+
+```
+
+boxplot diet strat vs group size
+```{r}
+ggplot(data = d, aes(x = diet_strategy$diet_strategy, y = MeanGroupSize)) +
+  geom_boxplot() +
+  theme_classic()
+```
+
+In one line of code, using {dplyr} verbs and the forward pipe (%>% or |>) operator, do the following:
+Add a variable, Binomial to the data frame d, which is a concatenation of the Genus and Species…
+Trim the data frame to only include the variables Binomial, Family, Brain_size_species_mean, and Body_mass_male_mean…
+Group these variables by Family…
+Calculate the average value for Brain_size_species_mean and Body_mass_male_mean per Family (remember, you may need to specify na.rm = TRUE)…
+And arrange by increasing average brain size
+
+
+```{r}
+
+s <- d %>% mutate(Binomial = paste0(Genus, "_", Species)) %>%
+  select(Binomial, Family, Brain_Size_Species_Mean, Body_mass_male_mean) %>%
+  group_by(Family)%>%
+  summarise(avg_brain_size = mean(Brain_Size_Species_Mean, na.rm = T), avgM_body_size = mean(Body_mass_male_mean, na.rm = T))%>%
+  arrange(avg_brain_size)
+```
+
+
+
+
+
+
